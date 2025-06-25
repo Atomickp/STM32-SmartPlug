@@ -1,0 +1,19 @@
+{
+  "name": "esp_monitor",
+  "version": "1.0.0",
+  "description": "ESP32 Power Monitoring System",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.16.0"
+  }
+}

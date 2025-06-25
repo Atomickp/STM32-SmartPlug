@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power Monitor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+  <style>
+    :root {
+      --bg: #121212;
+      --card-bg: #1f1f1f;
+      --text: #f0f0f0;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --success: #27ae60;
+      --danger: #e74c3c;
+      --primary: #3498db;
+      --secondary: #9b59b6;
+      --warning: #f39c12;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 15px;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 15px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.2em;
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
+    }
+
+    .controls {
+      text-align: center;
+      margin-bottom: 30px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .controls input {
+      padding: 8px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text);
+      margin-right: 10px;
+      font-size: 0.95em;
+      width: 200px;
+      transition: all 0.2s ease;
+    }
+
+    .controls input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .controls button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-size: 0.95em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+
+    .controls button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    }
+
+    #nodes {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .node-card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px var(--shadow);
+      width: 100%;
+      border: 1px solid var(--border);
+    }
+
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .node-header h3 {
+      color: var(--primary);
+      font-size: 1.3em;
+      margin: 0;
+    }
+
+    .readings {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .reading {
+      text-align: center;
+      padding: 12px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: var(--primary);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .unit {
+      font-size: 0.85em;
+      opacity: 0.8;
+    }
+
+    .controls-section {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .relay-control, .timer-control, .threshold-control, .auto-cutoff {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .relay-btn {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      min-width: 80px;
+    }
+
+    .relay-btn.on {
+      background-color: var(--success);
+    }
+
+    .relay-btn.off {
+      background-color: var(--danger);
+    }
+
+    .relay-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .relay-status-text {
+      margin-left: auto;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85em;
+      color: #fff;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      min-width: 70px;
+      text-align: center;
+    }
+
+    .relay-status-text.on {
+      background-color: var(--success);
+    }
+
+    .relay-status-text.off {
+      background-color: var(--danger);
+    }
+
+    .threshold-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    
+    .autocutoff-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    
+    .autocutoff-control .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .autocutoff-control .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .autocutoff-control .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .autocutoff-control .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    .autocutoff-control input:checked + .slider {
+        background-color: var(--success);
+    }
+    
+    .autocutoff-control input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .chart-container {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      padding: 15px;
+      height: 200px;
+      border: 1px solid var(--border);
+    }
+
+    .schedules {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .schedules h4 {
+      color: var(--primary);
+      margin-bottom: 15px;
+      font-size: 1.1em;
+    }
+
+    .schedule-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .schedule-form input,
+    .schedule-form select {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    .schedule-form input:focus,
+    .schedule-form select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .schedule-form button {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .schedule-form button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    }
+
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .monitor-btn {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .monitor-btn.active {
+      background: var(--success);
+    }
+
+    .monitor-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .download-logs {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      background: var(--secondary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .download-logs:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
+    }
+
+    #alertBox {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      padding: 12px 20px;
+      background-color: var(--success);
+      color: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      display: none;
+      font-weight: 500;
+      font-size: 0.95em;
+    }
+
+    .parent-graphs {
+      margin-bottom: 30px;
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px var(--shadow);
+      border: 1px solid var(--border);
+    }
+    
+    .parent-graphs h3 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .total-readings {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .total-reading {
+      text-align: center;
+      padding: 15px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    
+    .total-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: var(--secondary);
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .parent-charts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      height: 250px;
+    }
+    
+    @media (max-width: 1024px) {
+      .parent-charts {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .total-readings {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .node-title {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .node-name-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-name-input {
+      padding: 4px 8px;
+      border-radius: 4px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.9em;
+      width: 200px;
+    }
+
+    .save-name-btn {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8em;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="main-content">
+      <div class="container">
+        <h1>Power Monitor</h1>
+
+        <div class="parent-graphs">
+          <h3>Overall Power Metrics</h3>
+          <div class="total-readings">
+            <div class="total-reading">
+              <div>Total Voltage</div>
+              <span class="total-value" id="totalVoltage">0.00</span> V
+            </div>
+            <div class="total-reading">
+              <div>Total Current</div>
+              <span class="total-value" id="totalCurrent">0.00</span> A
+            </div>
+            <div class="total-reading">
+              <div>Total Power</div>
+              <span class="total-value" id="totalPower">0.00</span> W
+            </div>
+          </div>
+          <div class="parent-charts">
+            <div class="chart-container"><canvas id="totalVoltageChart"></canvas></div>
+            <div class="chart-container"><canvas id="totalCurrentChart"></canvas></div>
+            <div class="chart-container"><canvas id="totalPowerChart"></canvas></div>
+          </div>
+        </div>
+        
+        <div class="controls"></div>
+          <input type="text" id="nodeIdInput" placeholder="Enter Node ID">
+          <button onclick="addNewNode()">Add Node</button>
+        </div>
+
+        <div id="nodes">
+          <!-- Node cards will be added here -->
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Message -->
+  <div id="statusMessage" class="alert" role="alert"></div>
+
+  <!-- Add Node Button -->
+  <button id="addNodeBtn" class="btn btn-primary d-flex align-items-center justify-content-center">
+    <span style="font-size: 24px;">+</span>
+  </button>
+
+  <!-- Add Node Modal -->
+  <div class="modal fade" id="addNodeModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New ESP Node</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="nodeId" class="form-label">Node ID</label>
+            <input type="text" class="form-control" id="nodeId" placeholder="e.g., esp1">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmAddNode">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timer Modal -->
+  <div class="modal fade" id="timerModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark">
+        <div class="modal-header">
+          <h5 class="modal-title">Set Timer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="timerDuration" class="form-label">Duration (minutes)</label>
+            <input type="number" class="form-control" id="timerDuration" min="1" value="30">
+          </div>
+          <div class="mb-3">
+            <label for="timerAction" class="form-label">Action</label>
+            <select class="form-select" id="timerAction">
+              <option value="on">Turn ON</option>
+              <option value="off">Turn OFF</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmTimer">Set Timer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Modal -->
+  <div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Schedule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="scheduleTime" class="form-label">Time</label>
+            <input type="text" class="form-control" id="scheduleTime">
+          </div>
+          <div class="mb-3">
+            <label for="scheduleAction" class="form-label">Action</label>
+            <select class="form-select" id="scheduleAction">
+              <option value="on">Turn ON</option>
+              <option value="off">Turn OFF</option>
+            </select>
+          </div>
+          <div class="mb-3"></div>
+            <label for="scheduleDays" class="form-label">Repeat on</label>
+            <div id="scheduleDays" class="d-flex gap-2 flex-wrap">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-0" value="0">
+                <label class="form-check-label" for="day-0">Sun</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-1" value="1">
+                <label class="form-check-label" for="day-1">Mon</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-2" value="2">
+                <label class="form-check-label" for="day-2">Tue</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-3" value="3">
+                <label class="form-check-label" for="day-3">Wed</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-4" value="4">
+                <label class="form-check-label" for="day-4">Thu</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-5" value="5">
+                <label class="form-check-label" for="day-5">Fri</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="day-6" value="6">
+                <label class="form-check-label" for="day-6">Sat</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmSchedule">Add Schedule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const apiUrl = '/api';
+    let nodes = {};
+    let timers = {};
+    let charts = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize parent charts
+      initializeParentCharts();
+      loadNodes();
+      initializeNodeAddition();
+    });
+
+    function initializeParentCharts() {
+      const totalVoltageCtx = document.getElementById('totalVoltageChart').getContext('2d');
+      const totalCurrentCtx = document.getElementById('totalCurrentChart').getContext('2d');
+      const totalPowerCtx = document.getElementById('totalPowerChart').getContext('2d');
+      
+      // Using different colors for the parent graphs
+      charts.total = {
+        voltage: new Chart(totalVoltageCtx, getChartConfig('Total Voltage (V)', '155, 89, 182')),
+        current: new Chart(totalCurrentCtx, getChartConfig('Total Current (A)', '52, 152, 219')),
+        power: new Chart(totalPowerCtx, getChartConfig('Total Power (W)', '231, 76, 60'))
+      };
+      
+      // Initial update
+      updateTotalMetrics();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadNodes();
+      initializeNodeAddition();
+    });
+
+    function initializeNodeAddition() {
+      const addNodeBtn = document.getElementById('addNodeBtn');
+      const confirmAddNodeBtn = document.getElementById('confirmAddNode');
+      const addNodeModal = new bootstrap.Modal(document.getElementById('addNodeModal'));
+      const nodeIdInput = document.getElementById('nodeId');
+
+      if(addNodeBtn) {
+        addNodeBtn.addEventListener('click', () => {
+          addNodeModal.show();
+        });
+      }
+
+      if(confirmAddNodeBtn) {
+        confirmAddNodeBtn.addEventListener('click', async () => {
+          const nodeId = nodeIdInput.value.trim();
+          if (nodeId) {
+            await addNewNode(nodeId);
+            nodeIdInput.value = '';
+            addNodeModal.hide();
+          } else {
+            showToast('Please enter a valid Node ID.', 'error');
+          }
+        });
+      }
+      
+      // Also check for the initial input field for adding a node
+      const legacyNodeIdInput = document.getElementById('nodeIdInput');
+      const legacyAddBtn = legacyNodeIdInput.nextElementSibling;
+      if (legacyAddBtn) {
+        legacyAddBtn.onclick = async () => {
+            const nodeId = legacyNodeIdInput.value.trim();
+            if(nodeId) {
+                await addNewNode(nodeId);
+                legacyNodeIdInput.value = '';
+            } else {
+                showToast('Please enter a valid Node ID.', 'error');
+            }
+        };
+      }
+    }
+
+    async function loadNodes() {
+      try {
+        const response = await fetch(`${apiUrl}/nodes`);
+        if (!response.ok) throw new Error('Failed to fetch nodes');
+        const nodesData = await response.json();
+        const nodesContainer = document.getElementById('nodes');
+        nodesContainer.innerHTML = ''; // Clear existing nodes
+        
+        for (const nodeId of Object.keys(nodesData)) {
+          await renderNode(nodeId);
+          }
+        } catch (error) {
+        console.error('Error loading nodes:', error);
+        showToast('Failed to load nodes.', 'error');
+      }
+    }
+
+    async function addNewNode(nodeId) {
+        try {
+            const response = await fetch(`${apiUrl}/nodes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nodeId })
+          });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to add node');
+            }
+
+            await renderNode(nodeId);
+            showToast(`Node ${nodeId} added successfully.`, 'success');
+
+        } catch (error) {
+            console.error('Error adding node:', error);
+            showToast(error.message, 'error');
+        }
+    }
+    
+    async function renderNode(nodeId) {
+        if (document.querySelector(`.node-card[data-node-id="${nodeId}"]`)) {
+            return; // Node already rendered
+        }
+      
+        const nodeCardHTML = createNodeCardHTML(nodeId);
+        document.getElementById('nodes').insertAdjacentHTML('beforeend', nodeCardHTML);
+      
+        nodes[nodeId] = {
+            isMonitoring: true,
+            timerInterval: null,
+            timerRemaining: 0,
+            timerAction: 'off'
+        };
+
+        try {
+            const response = await fetch(`${apiUrl}/sensor/${nodeId}`);
+            if (response.ok) {
+          const data = await response.json();
+                updateReadingsUI(nodeId, data);
+                // Set initial values for settings
+                const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+                if(card){
+                    card.querySelector('.threshold-input').value = data.threshold || '';
+                    card.querySelector('.autocutoff-checkbox').checked = data.autoCutoff || false;
+                }
+            }
+        } catch (error) {
+            console.error(`Initial data fetch failed for ${nodeId}:`, error);
+        }
+
+        initializeCharts(nodeId);
+        await loadSchedules(nodeId);
+        await updateRelayStatus(nodeId);
+        startMonitoring(nodeId);
+
+        // Init flatpickr for schedule time
+        const timeInput = document.querySelector(`.node-card[data-node-id="${nodeId}"] .schedule-time`);
+        flatpickr(timeInput, {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+        });
+    }
+
+    function createNodeCardHTML(nodeId) {
+      return `
+        <div class="node-card" data-node-id="${nodeId}">
+          <div class="node-header">
+            <div class="node-title">
+              <h3>Node ${nodeId}</h3>
+              <div class="node-name-container">
+                <input type="text" class="node-name-input form-control" placeholder="Enter node name">
+                <button class="save-name-btn btn btn-sm btn-primary" onclick="saveName('${nodeId}')">Save</button>
+              </div>
+            </div>
+            <div class="node-controls">
+              <button class="monitor-btn active" onclick="toggleMonitoring('${nodeId}')">Stop Monitoring</button>
+              <button class="download-logs" onclick="downloadLogs('${nodeId}')">Download Logs</button>
+              <button class="remove-btn" onclick="removeNode('${nodeId}')">Remove Node</button>
+            </div>
+          </div>
+          <div class="readings">
+            <div class="reading"><span class="value voltage">0.00</span> <span class="unit">V</span></div>
+            <div class="reading"><span class="value current">0.00</span> <span class="unit">A</span></div>
+            <div class="reading"><span class="value power">0.00</span> <span class="unit">W</span></div>
+          </div>
+          <div class="controls-section">
+            <div class="relay-control">
+              <button class="relay-btn on" onclick="controlRelay('${nodeId}', 'on')">ON</button>
+              <button class="relay-btn off" onclick="controlRelay('${nodeId}', 'off')">OFF</button>
+              <span class="relay-status-text"></span>
+            </div>
+            <div class="timer-control">
+              <input type="number" class="timer-duration form-control" placeholder="Seconds" min="1">
+              <select class="timer-action form-select">
+                <option value="on">Turn ON</option>
+                <option value="off">Turn OFF</option>
+              </select>
+              <button class="start-timer btn btn-primary" onclick="controlTimer('${nodeId}', 'start')">Start</button>
+            </div>
+          </div>
+          <div class="controls-section">
+            <div class="threshold-control">
+              <label for="threshold-${nodeId}">Threshold (W):</label>
+              <input type="number" id="threshold-${nodeId}" class="threshold-input form-control" placeholder="e.g., 100">
+              <button class="btn btn-info" onclick="saveSettings('${nodeId}')">Set</button>
+            </div>
+            <div class="autocutoff-control">
+              <label>Auto-Cutoff:</label>
+              <label class="toggle-switch">
+                <input type="checkbox" class="autocutoff-checkbox" onchange="saveSettings('${nodeId}')">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="timer-display" style="display: none; margin-top: 10px;"></div>
+          <div class="charts">
+            <div class="chart-container"><canvas id="voltageGraph-${nodeId}"></canvas></div>
+            <div class="chart-container"><canvas id="currentGraph-${nodeId}"></canvas></div>
+            <div class="chart-container"><canvas id="powerGraph-${nodeId}"></canvas></div>
+          </div>
+          <div class="schedules">
+            <h4>Schedules</h4>
+            <div class="schedule-form">
+              <input type="text" class="schedule-time form-control" placeholder="Select time">
+              <select class="schedule-action form-select"><option value="on">ON</option><option value="off">OFF</option></select>
+              <button class="btn btn-secondary" onclick="addSchedule('${nodeId}')">Add</button>
+            </div>
+            <div class="schedule-list"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function startMonitoring(nodeId) {
+      setInterval(async () => {
+        if (nodes[nodeId] && nodes[nodeId].isMonitoring) {
+          try {
+            const response = await fetch(`${apiUrl}/sensor/${nodeId}`);
+            if (response.ok) {
+              const data = await response.json();
+              updateReadingsUI(nodeId, data);
+            }
+          } catch (error) {
+            // console.error(`Monitoring error for ${nodeId}:`, error);
+          }
+        }
+        await checkTimer(nodeId);
+        await updateRelayStatus(nodeId);
+      }, 1000);
+    }
+
+    function updateReadingsUI(nodeId, data) {
+      const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+      if (!card || !data) return;
+      
+      card.querySelector('.voltage').textContent = (data.voltage || 0).toFixed(2);
+      card.querySelector('.current').textContent = (data.current || 0).toFixed(2);
+      card.querySelector('.power').textContent = (data.power || 0).toFixed(2);
+      updateCharts(nodeId, data);
+      updateTotalMetrics();
+    }
+    
+    async function controlRelay(nodeId, state) {
+      try {
+        const response = await fetch(`${apiUrl}/relay/${nodeId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state })
+          });
+          if (!response.ok) throw new Error('Failed to control relay');
+          
+        showToast(`Relay for ${nodeId} turned ${state.toUpperCase()}.`, 'success');
+        updateRelayStatus(nodeId);
+
+        } catch (error) {
+        console.error('Error controlling relay:', error);
+        showToast('Failed to control relay.', 'error');
+      }
+    }
+    
+    async function updateRelayStatus(nodeId) {
+        try {
+            const response = await fetch(`${apiUrl}/relay/${nodeId}`);
+            if (!response.ok) return;
+            const data = await response.json();
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        if (!card) return;
+
+        const onBtn = card.querySelector('.relay-btn.on');
+        const offBtn = card.querySelector('.relay-btn.off');
+            const statusText = card.querySelector('.relay-status-text');
+
+            if(data.state === 'on'){
+          onBtn.classList.add('active');
+          offBtn.classList.remove('active');
+                statusText.textContent = 'ON';
+                statusText.classList.add('on');
+                statusText.classList.remove('off');
+        } else {
+          offBtn.classList.add('active');
+                onBtn.classList.remove('active');
+                statusText.textContent = 'OFF';
+                statusText.classList.add('off');
+                statusText.classList.remove('on');
+            }
+        } catch (error) {
+            // console.error(`Failed to update relay status for ${nodeId}`, error);
+        }
+    }
+
+    // --- Timer Functions ---
+    async function controlTimer(nodeId, command) {
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        if (!card) return;
+
+        if (command === 'start') {
+            const durationInput = card.querySelector('.timer-duration');
+            const duration = parseInt(durationInput.value, 10);
+            const action = card.querySelector('.timer-action').value;
+
+            if (!duration || duration <= 0) {
+                showToast('Please enter a valid duration in seconds.', 'error');
+          return;
+        }
+            try {
+                const response = await fetch(`${apiUrl}/timer/${nodeId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ duration, action }),
+                });
+                if (!response.ok) throw new Error('Failed to start timer');
+                showToast(`Timer set for ${duration} seconds.`);
+                await checkTimer(nodeId);
+            } catch (error) {
+                showToast('Failed to start timer.', 'error');
+            }
+        } else { // command === 'cancel'
+            try {
+                await fetch(`${apiUrl}/timer/${nodeId}`, { method: 'DELETE' });
+                showToast('Timer cancelled.');
+                clearTimerInterval(nodeId);
+                renderTimerDisplay(nodeId, null);
+            } catch (error) {
+                showToast('Failed to cancel timer.', 'error');
+            }
+        }
+    }
+    
+    async function checkTimer(nodeId) {
+        try {
+            const response = await fetch(`${apiUrl}/timer/${nodeId}`);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            renderTimerDisplay(nodeId, data);
+
+        } catch(error) {
+            clearTimerInterval(nodeId);
+            renderTimerDisplay(nodeId, null);
+        }
+    }
+    
+    function renderTimerDisplay(nodeId, timerData) {
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        if (!card) return;
+        const timerDisplay = card.querySelector('.timer-display');
+        const startBtn = card.querySelector('.start-timer');
+
+        if (timerData && timerData.active && timerData.remainingTime > 0) {
+            const minutes = Math.floor(timerData.remainingTime / 60);
+            const seconds = timerData.remainingTime % 60;
+            timerDisplay.innerHTML = `Time left: <b>${minutes}:${seconds.toString().padStart(2, '0')}</b> (Turn ${timerData.action.toUpperCase()})`;
+            timerDisplay.style.display = 'block';
+            startBtn.textContent = 'Cancel';
+            startBtn.onclick = () => controlTimer(nodeId, 'cancel');
+        } else {
+            timerDisplay.style.display = 'none';
+            startBtn.textContent = 'Start';
+            startBtn.onclick = () => controlTimer(nodeId, 'start');
+        }
+    }
+
+    function clearTimerInterval(nodeId) {
+        if (nodes[nodeId] && nodes[nodeId].timerInterval) {
+            clearInterval(nodes[nodeId].timerInterval);
+            nodes[nodeId].timerInterval = null;
+        }
+    }
+
+    // --- Schedule Functions ---
+    async function loadSchedules(nodeId) {
+        try {
+            const response = await fetch(`${apiUrl}/schedules/${nodeId}`);
+            if (!response.ok) return;
+            const schedules = await response.json();
+            const listEl = document.querySelector(`.node-card[data-node-id="${nodeId}"] .schedule-list`);
+            listEl.innerHTML = '';
+            schedules.forEach(s => listEl.insertAdjacentHTML('beforeend', createScheduleItemHTML(nodeId, s)));
+        } catch (error) {
+            console.error(`Error loading schedules for ${nodeId}:`, error);
+        }
+    }
+
+    async function addSchedule(nodeId) {
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        const timeInput = card.querySelector('.schedule-time');
+        const actionSelect = card.querySelector('.schedule-action');
+        const time = timeInput.value;
+        const action = actionSelect.value;
+
+        if (!time) {
+            showToast('Please select a time for the schedule.', 'error');
+          return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/schedules/${nodeId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ time, action })
+            });
+
+            if (!response.ok) throw new Error('Failed to add schedule');
+            
+            await loadSchedules(nodeId); // Reload all schedules to get the new one with ID
+            timeInput.value = '';
+            showToast('Schedule added successfully.');
+
+        } catch (error) {
+            console.error('Error adding schedule:', error);
+            showToast('Failed to add schedule.', 'error');
+        }
+    }
+    
+    async function removeSchedule(nodeId, scheduleId) {
+        try {
+            const response = await fetch(`${apiUrl}/schedules/${nodeId}/${scheduleId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to remove schedule');
+            
+            const scheduleItem = document.querySelector(`.schedule-item[data-schedule-id="${scheduleId}"]`);
+            if (scheduleItem) scheduleItem.remove();
+            showToast('Schedule removed.');
+
+        } catch (error) {
+            console.error('Error removing schedule:', error);
+            showToast('Failed to remove schedule.', 'error');
+        }
+    }
+
+    function createScheduleItemHTML(nodeId, schedule) {
+        return `
+          <div class="schedule-item d-flex justify-content-between align-items-center mb-2" data-schedule-id="${schedule.id}">
+            <span>${schedule.time} - Turn ${schedule.action.toUpperCase()}</span>
+            <button class="btn btn-sm btn-danger" onclick="removeSchedule('${nodeId}', '${schedule.id}')">Remove</button>
+          </div>
+        `;
+    }
+
+    // --- Node Management ---
+    function toggleMonitoring(nodeId) {
+      if (!nodes[nodeId]) return;
+      nodes[nodeId].isMonitoring = !nodes[nodeId].isMonitoring;
+      const btn = document.querySelector(`.node-card[data-node-id="${nodeId}"] .monitor-btn`);
+      btn.textContent = nodes[nodeId].isMonitoring ? 'Stop Monitoring' : 'Start Monitoring';
+      btn.classList.toggle('active', nodes[nodeId].isMonitoring);
+      showToast(`Monitoring for ${nodeId} ${nodes[nodeId].isMonitoring ? 'resumed' : 'paused'}.`);
+    }
+
+    async function removeNode(nodeId) {
+      if (!confirm(`Are you sure you want to remove node ${nodeId}?`)) return;
+      try {
+        const response = await fetch(`${apiUrl}/nodes/${nodeId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to remove node from server.');
+        
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        if (card) card.remove();
+        delete nodes[nodeId];
+        delete charts[nodeId];
+        clearTimerInterval(nodeId);
+        showToast(`Node ${nodeId} removed.`);
+
+      } catch (error) {
+        console.error('Error removing node:', error);
+        showToast('Failed to remove node.', 'error');
+      }
+    }
+
+    // --- Utility Functions ---
+    async function downloadLogs(nodeId) {
+        try {
+            const response = await fetch(`${apiUrl}/logs/${nodeId}`);
+            if (!response.ok) throw new Error('Server error generating logs');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${nodeId}_logs.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showToast('Log download started.');
+          } catch (error) {
+            console.error('Download error:', error);
+            showToast(error.message, 'error');
+        }
+    }
+
+    function showToast(message, type = 'success') {
+      const alertBox = document.getElementById('alertBox');
+      alertBox.textContent = message;
+      alertBox.className = 'alert';
+      alertBox.classList.add(type === 'success' ? 'alert-success' : 'alert-danger');
+      
+      // Use Bootstrap classes for styling
+      if (type === 'success') {
+        alertBox.classList.add('bg-success', 'text-white');
+      } else {
+        alertBox.classList.add('bg-danger', 'text-white');
+      }
+
+      alertBox.style.display = 'block';
+      alertBox.style.position = 'fixed';
+      alertBox.style.top = '20px';
+      alertBox.style.right = '20px';
+      alertBox.style.zIndex = '1050';
+
+      setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
+    }
+    
+    function getChartConfig(label, color) {
+        return {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: label,
+                    data: [],
+                    fill: true,
+                    backgroundColor: `rgba(${color}, 0.2)`,
+                    borderColor: `rgb(${color})`,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                return parseFloat(value.toFixed(3));
+                            }
+                        },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { display: false },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: label,
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        padding: { bottom: 10 }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                maintainAspectRatio: false
+            }
+        };
+    }
+    
+    function initializeCharts(nodeId) {
+        const voltageCtx = document.getElementById(`voltageGraph-${nodeId}`).getContext('2d');
+        const currentCtx = document.getElementById(`currentGraph-${nodeId}`).getContext('2d');
+        const powerCtx = document.getElementById(`powerGraph-${nodeId}`).getContext('2d');
+
+        charts[nodeId] = {
+            voltage: new Chart(voltageCtx, getChartConfig('Voltage (V)', '52, 152, 219')),
+            current: new Chart(currentCtx, getChartConfig('Current (A)', '46, 204, 113')),
+            power: new Chart(powerCtx, getChartConfig('Power (W)', '231, 76, 60'))
+        };
+    }
+
+    function updateCharts(nodeId, data) {
+        const nodeCharts = charts[nodeId];
+        if (!nodeCharts) return;
+
+        const now = new Date();
+        const label = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+        const update = (chart, value) => {
+            chart.data.labels.push(label);
+            chart.data.datasets[0].data.push(value);
+            if (chart.data.labels.length > 20) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            const chartData = chart.data.datasets[0].data;
+
+            if (chartData.length > 0) {
+                let minVal = Math.min(...chartData);
+                let maxVal = Math.max(...chartData);
+
+                if (minVal === maxVal) {
+                    const buffer = Math.abs(maxVal * 0.1) || 0.1;
+                    minVal -= buffer;
+                    maxVal += buffer;
+                } else {
+                    const range = maxVal - minVal;
+                    minVal -= range * 0.1;
+                    maxVal += range * 0.1;
+                }
+                
+                if (minVal < 0 && (chart.data.datasets[0].label.includes('Voltage') || chart.data.datasets[0].label.includes('Current') || chart.data.datasets[0].label.includes('Power'))) {
+                    minVal = 0;
+                }
+
+                chart.options.scales.y.min = minVal;
+                chart.options.scales.y.max = maxVal;
+            }
+
+            chart.update('none');
+        };
+
+        update(nodeCharts.voltage, data.voltage || 0);
+        update(nodeCharts.current, data.current || 0);
+        update(nodeCharts.power, data.power || 0);
+    }
+
+    function updateTotalMetrics() {
+      const totalVoltageEl = document.getElementById('totalVoltage');
+      const totalCurrentEl = document.getElementById('totalCurrent');
+      const totalPowerEl = document.getElementById('totalPower');
+
+      let totalVoltage = 0;
+      let totalCurrent = 0;
+      let totalPower = 0;
+
+      Object.keys(nodes).forEach(nodeId => {
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        if (card) {
+          const voltage = parseFloat(card.querySelector('.voltage').textContent) || 0;
+          const current = parseFloat(card.querySelector('.current').textContent) || 0;
+          const power = parseFloat(card.querySelector('.power').textContent) || 0;
+
+          totalVoltage += voltage;
+          totalCurrent += current;
+          totalPower += power;
+        }
+      });
+
+      totalVoltageEl.textContent = totalVoltage.toFixed(2);
+      totalCurrentEl.textContent = totalCurrent.toFixed(2);
+      totalPowerEl.textContent = totalPower.toFixed(2);
+
+      updateTotalCharts('totalVoltageChart', totalVoltage);
+      updateTotalCharts('totalCurrentChart', totalCurrent);
+      updateTotalCharts('totalPowerChart', totalPower);
+    }
+
+    function updateTotalCharts(chartId, value) {
+      const chart = Chart.getChart(chartId);
+      if (!chart) return;
+
+      const now = new Date();
+      const label = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(value);
+      if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      const chartData = chart.data.datasets[0].data;
+
+      if (chartData.length > 0) {
+        let minVal = Math.min(...chartData);
+        let maxVal = Math.max(...chartData);
+
+        if (minVal === maxVal) {
+          const buffer = Math.abs(maxVal * 0.1) || 0.1;
+          minVal -= buffer;
+          maxVal += buffer;
+        } else {
+          const range = maxVal - minVal;
+          minVal -= range * 0.1;
+          maxVal += range * 0.1;
+        }
+        
+        if (minVal < 0) {
+          minVal = 0;
+        }
+
+        chart.options.scales.y.min = minVal;
+        chart.options.scales.y.max = maxVal;
+      }
+
+      chart.update('none');
+    }
+
+    async function saveSettings(nodeId) {
+        const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+        const threshold = card.querySelector('.threshold-input').value;
+        const autoCutoff = card.querySelector('.autocutoff-checkbox').checked;
+
+        try {
+            const response = await fetch(`${apiUrl}/nodes/${nodeId}/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threshold: parseFloat(threshold), autoCutoff })
+            });
+            if (!response.ok) throw new Error('Failed to save settings');
+            showToast('Settings saved successfully.', 'success');
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            showToast('Failed to save settings.', 'error');
+        }
+    }
+
+    async function saveName(nodeId) {
+      const card = document.querySelector(`.node-card[data-node-id="${nodeId}"]`);
+      const nameInput = card.querySelector('.node-name-input');
+      const name = nameInput.value.trim();
+      
+      if (!name) {
+        showToast('Please enter a valid name.', 'error');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${apiUrl}/nodes/${nodeId}/name`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        
+        if (!response.ok) throw new Error('Failed to save node name');
+        
+        // Update the node card title with the new name
+        card.querySelector('h3').textContent = name;
+        showToast(`Node name updated to "${name}"`, 'success');
+      } catch (error) {
+        console.error('Error saving node name:', error);
+        showToast('Failed to save node name.', 'error');
+      }
+    }
+
+    // WebSocket initialization and message handling
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(`${wsProtocol}//${window.location.hostname}:3000`);
+
+ws.onopen = () => {
+  console.log('WebSocket connection established');
+};
+
+ws.onclose = () => {
+  console.log('WebSocket connection closed');
+  // Try to reconnect after 5 seconds
+  setTimeout(() => {
+    window.location.reload();
+  }, 5000);
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+// Simple WebSocket message handler without cooldown
+ws.onmessage = async (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    console.log('WebSocket message received:', data);
+
+    if (data.type === 'threshold_alert') {
+      const { nodeId, power, threshold } = data;
+      console.log('Threshold alert received:', { nodeId, power, threshold });
+      
+      // Display pop-up notification
+      showToast(`⚠️ Power threshold exceeded for Node ${nodeId}! Power: ${power.toFixed(2)}W, Threshold: ${threshold}W`, 'error');
+    } else if (data.type === 'sensor_data') {
+      updateReadingsUI(data.nodeId, data);
+    }
+  } catch (error) {
+    console.error('Error processing WebSocket message:', error);
+  }
+};
+  </script>
+</body>
+</html>

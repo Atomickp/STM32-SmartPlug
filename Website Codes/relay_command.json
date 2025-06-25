@@ -1,0 +1,12 @@
+{
+  "nodes": {
+    "esp1": {
+      "state": "on",
+      "timestamp": 1750586111798
+    },
+    "esp2": {
+      "state": "off",
+      "timestamp": 1750584951912
+    }
+  }
+}

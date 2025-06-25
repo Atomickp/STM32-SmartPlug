@@ -1,0 +1,24 @@
+{
+  "nodes": {
+    "esp1": {
+      "name": "Kitchen light",
+      "voltage": 25,
+      "current": 10,
+      "power": 115,
+      "relay": "off",
+      "timestamp": 1749545399626,
+      "threshold": 1000,
+      "autoCutoff": true
+    },
+    "esp2": {
+      "name": "Kitchen Stove",
+      "voltage": 0.21,
+      "current": 0.42,
+      "power": 10,
+      "relay": "off",
+      "timestamp": 1749545399630,
+      "threshold": 1000,
+      "autoCutoff": true
+    }
+  }
+}

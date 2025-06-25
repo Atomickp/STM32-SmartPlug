@@ -20,5 +20,8 @@ Working Prototype photo
 
 ![WhatsApp Image 2025-06-25 at 13 06 17_9efd1fed](https://github.com/user-attachments/assets/3a1dc75e-9f89-46d9-b30d-db75d4923ba0)
 
+## 📌 To-Do
+
+- [ ] Create final PCB
 
 Author : Krishaang Phogat and Arnav Gupta
